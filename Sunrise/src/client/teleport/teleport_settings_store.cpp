@@ -222,7 +222,7 @@ Settings get() noexcept {
     return snapshot;
 }
 
-/** Publishes one configuration and writes it */
+/** Publishes one configuration and writes it straight to disk. */
 bool publish(const Settings& settings) noexcept {
     if (!valid(settings)) {
         return false;

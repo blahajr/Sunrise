@@ -17,6 +17,7 @@
 #include "../hooks/bootflow/bootflow_hook_lifecycle.h"
 #include "../hooks/config_getter/config_getter_lifecycle.h"
 #include "../hooks/cursor/runtime.h"
+#include "../hooks/fov/fov_apply.h"
 #include "../hooks/graphics/graphics_hook_lifecycle.h"
 #include "../hooks/network/runtime.h"
 #include "../hooks/polled_input/runtime.h"
@@ -204,6 +205,8 @@ bool activate_main_once() noexcept {
     core::log::write(
         core::log::Channel::client, core::log::Level::info, "ev=activate stage=main result=ok");
     ReleaseSRWLockExclusive(&runtime::g_lock);
+    // Apply the persisted override once, once game is active
+    hooks::fov::apply();
     return true;
 }
 

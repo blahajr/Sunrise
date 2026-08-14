@@ -1,5 +1,5 @@
 /**
- * fov module interface
+ * FOV module interface.
  */
 
 #include "fov_panel.h"
@@ -13,16 +13,21 @@
 namespace sunrise::client::ui::fov {
 namespace {
 
+/** True while the slider owns an unpublished draft value. */
 bool g_draggingFov{};
-float g_draftFov{client::fov::kDefaultFov};
+/** Live slider value, persisted only when editing finishes. */
+std::uint16_t g_draftFov{client::fov::kDefaultFov};
 
 } // namespace
 
+/** Draws the FOV module into the current Dear ImGui panel. */
 void draw() noexcept {
     client::fov::Settings settings = client::fov::get();
     bool applyNow = false;
     bool persistNow = false;
 
+    ImGui::TextUnformatted("Field of View");
+    ImGui::Spacing();
     ImGui::TextWrapped("Sets the player field of view.");
     ImGui::Spacing();
 
@@ -39,15 +44,15 @@ void draw() noexcept {
     ImGui::TextUnformatted("FOV");
     ImGui::SameLine(labelWidth);
     ImGui::SetNextItemWidth(controlWidth);
+
     if (!g_draggingFov) {
         g_draftFov = settings.fov;
     }
-    float value = g_draftFov;
-    if (ImGui::SliderFloat(
-            "##fov", &value, client::fov::kMinimumFov, client::fov::kMaximumFov, "%.0f")) {
+    int value = g_draftFov;
+    if (ImGui::SliderInt("##fov", &value, client::fov::kMinimumFov, client::fov::kMaximumFov)) {
         g_draggingFov = true;
-        g_draftFov = value;
-        settings.fov = value;
+        g_draftFov = static_cast<std::uint16_t>(value);
+        settings.fov = g_draftFov;
         applyNow = true;
     }
     if (ImGui::IsItemDeactivatedAfterEdit()) {
@@ -56,9 +61,12 @@ void draw() noexcept {
         persistNow = true;
     }
 
+    // Slider movement applies immediately, but only the final released value reaches disk.
     if (persistNow && !client::fov::publish(settings)) {
+        // A failed commit returns the maintenance path to the last durable snapshot.
+        client::hooks::fov::apply(client::fov::get());
         ImGui::Spacing();
-        ImGui::TextUnformatted("value is out of range D:");
+        ImGui::TextUnformatted("failed to save settings");
         return;
     }
     if (applyNow) {

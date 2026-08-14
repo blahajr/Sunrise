@@ -1,33 +1,37 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sunrise::client::fov {
 
-inline constexpr float kDefaultFov = 75.0F;
-inline constexpr float kMinimumFov = 55.0F;
-inline constexpr float kMaximumFov = 150.0F;
+/** FOV used when no valid persisted value exists. */
+inline constexpr std::uint16_t kDefaultFov = 85;
+/** Lowest FOV accepted by the game and settings file. */
+inline constexpr std::uint16_t kMinimumFov = 55;
+/** Highest FOV accepted by the game and settings file. */
+inline constexpr std::uint16_t kMaximumFov = 157;
 
-
+/** Complete persisted FOV configuration. */
 struct Settings {
+    /** Whether Sunrise owns the live game FOV. */
     bool enabled{false};
-    float fov{kDefaultFov};
+    /** Whole-number FOV written to the display-settings object. */
+    std::uint16_t fov{kDefaultFov};
 };
 
-/**
- * Resolves the configuration file and loads it when one exists.
- * @param module Loaded DLL used to resolve the owned artifact directory.
- */
+/** Resolves the configuration path and loads a saved FOV document when present. */
 void initialize(void* module) noexcept;
 
-/** Drops the runtime configuration and the file path. */
+/** Drops the active configuration and resolved file path. */
 void shutdown() noexcept;
 
-/** @return One lock-consistent copy of the current configuration. */
+/** @return One lock-consistent copy of the active FOV configuration. */
 [[nodiscard]] Settings get() noexcept;
 
 /**
- * Publishes one configuration and writes it.
- * @param settings Configuration to publish, refused when a field is out of range.
- * @return True when the value was published. A failed write is logged, not returned.
+ * Persists and publishes one configuration as a single state change.
+ * @param settings Candidate configuration.
+ * @return True when the configuration is valid and its complete document reached disk.
  */
 bool publish(const Settings& settings) noexcept;
 

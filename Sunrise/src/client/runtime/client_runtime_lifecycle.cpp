@@ -7,6 +7,7 @@
 #include "../hooks/bootflow/bootflow_hook_lifecycle.h"
 #include "../hooks/config_getter/config_getter_lifecycle.h"
 #include "../hooks/cursor/runtime.h"
+#include "../hooks/fov/fov_apply.h"
 #include "../hooks/graphics/graphics_hook_lifecycle.h"
 #include "../hooks/network/runtime.h"
 #include "../hooks/polled_input/runtime.h"
@@ -89,6 +90,7 @@ bool shutdown() noexcept {
     runtime::g_graphicsStage = runtime::StageState::pending;
     runtime::g_platformStage = runtime::StageState::pending;
     ui::runtime::shutdown();
+    hooks::fov::shutdown();
     fov::shutdown();
     teleport::shutdown();
     core::log::write(core::log::Channel::client, core::log::Level::info, "ev=shutdown result=ok");

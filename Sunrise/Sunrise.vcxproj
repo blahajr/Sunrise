@@ -20,7 +20,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
@@ -192,9 +192,6 @@
     <ClCompile Include="src\client\hooks\teleport\teleport_action_key.cpp" />
     <ClCompile Include="src\client\fov\fov_settings_store.cpp" />
     <ClCompile Include="src\client\ui\fov\fov_panel.cpp" />
-    <ClInclude Include="src\client\fov\fov_settings_store.h" />
-    <ClInclude Include="src\client\ui\fov\fov_panel.h" />
-    <ClInclude Include="src\client\hooks\fov\fov_apply.h" />
     <ClCompile Include="src\client\hooks\fov\fov_apply.cpp" />
     <ClCompile Include="src\client\hooking\detour.cpp" />
     <ClCompile Include="src\client\hooking\detour\protected_detour_uninstall.cpp" />
@@ -624,7 +621,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resources\resource.h" />
-
     <ClInclude Include="src\core\logging\log.h" />
     <ClInclude Include="src\core\logging\snapshot\snapshot.h" />
     <ClInclude Include="src\core\logging\snapshot\internal.h" />
@@ -682,6 +678,10 @@
     <ClInclude Include="src\client\hooks\teleport\internal.h" />
     <ClInclude Include="src\client\hooks\teleport\runtime.h" />
     <ClInclude Include="src\client\ui\teleport\teleport_panel.h" />
+    <ClInclude Include="src\client\fov\fov_settings_store.h" />
+    <ClInclude Include="src\client\hooks\fov\fov_apply.h" />
+    <ClCompile Include="src\client\hooks\fov\fov_resolver.h" />
+    <ClInclude Include="src\client\ui\fov\fov_panel.h" />
     <ClInclude Include="src\client\runtime\internal.h" />
     <ClInclude Include="src\client\runtime\host\game_host_classification.h" />
     <ClInclude Include="src\client\hooks\graphics\graphics_hook_lifecycle.h" />

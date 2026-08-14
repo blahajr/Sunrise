@@ -1,7 +1,3 @@
-/**
- * The FOV config store.
- */
-
 #include "fov_settings_store.h"
 
 #include <Windows.h>
@@ -18,21 +14,28 @@
 namespace sunrise::client::fov {
 namespace {
 
+/** Module-owned FOV document beside the generated settings and logs. */
 constexpr std::wstring_view kFileSuffix = L"\\fov.json";
+/** The two-field document fits inside this fixed read and write buffer. */
 constexpr std::size_t kFileCapacity = 512;
+/** Longest scalar accepted from the document. */
 constexpr std::size_t kScalarCapacity = 32;
 
+/** One lock covers the active snapshot and its resolved persistence path. */
 SRWLOCK g_lock{SRWLOCK_INIT};
+/** Active configuration read by the UI and apply path. */
 Settings g_settings{};
+/** Absolute path of the module-owned FOV document. */
 core::path::Buffer g_path{};
+/** True when `g_path` is ready for file operations. */
 bool g_pathResolved{};
 
-/** @param settings Configuration to check. @return True when every field is in range. */
+/** @param settings Candidate configuration. @return True when its FOV is in range. */
 [[nodiscard]] bool valid(const Settings& settings) noexcept {
     return settings.fov >= kMinimumFov && settings.fov <= kMaximumFov;
 }
 
-/** @param reason Key naming the step that failed. */
+/** @param reason Stable key naming the persistence step that failed. */
 void report_fail(const char* reason) noexcept {
     std::array<char, 96> line{};
     const int written =
@@ -45,11 +48,11 @@ void report_fail(const char* reason) noexcept {
 }
 
 /**
- * Finds one key's raw scalar text.
+ * Finds one scalar value in the small module-owned document.
  * @param text Whole document.
- * @param key Quoted key to locate.
- * @param output Receives the text between the colon and the next separator.
- * @return True when the key exists and carries a non-empty value.
+ * @param key Quoted field name to locate.
+ * @param output Receives the text after the field's colon.
+ * @return True when the field exists and its scalar is non-empty.
  */
 [[nodiscard]] bool
 scalar_for(std::string_view text, std::string_view key, std::string_view& output) noexcept {
@@ -75,13 +78,13 @@ scalar_for(std::string_view text, std::string_view key, std::string_view& output
 }
 
 /**
- * Copies one scalar into null-terminated storage the C conversions require.
+ * Copies scalar text into terminated storage for the C numeric parser.
  * @param value Scalar text taken from the document.
  * @param output Receives the terminated copy.
  * @return True when the scalar fits.
  */
 [[nodiscard]] bool terminated(std::string_view value,
-                              std::array<char, kScalarCapacity>& output) noexcept {
+                               std::array<char, kScalarCapacity>& output) noexcept {
     if (value.size() >= output.size()) {
         return false;
     }
@@ -92,12 +95,7 @@ scalar_for(std::string_view text, std::string_view key, std::string_view& output
     return true;
 }
 
-/**
- * Layers one document over the current defaults. A missing or malformed key keeps its default,
- * so a hand-edited file cannot stop the module loading.
- * @param text Whole document.
- * @param output Receives the parsed configuration.
- */
+/** Applies every valid field found in one FOV document to a default snapshot. */
 void parse(std::string_view text, Settings& output) noexcept {
     std::string_view scalar;
     if (scalar_for(text, "\"enabled\"", scalar)) {
@@ -105,14 +103,17 @@ void parse(std::string_view text, Settings& output) noexcept {
     }
     std::array<char, kScalarCapacity> buffer{};
     if (scalar_for(text, "\"fov\"", scalar) && terminated(scalar, buffer)) {
-        output.fov = std::strtof(buffer.data(), nullptr);
+        const long parsed = std::strtol(buffer.data(), nullptr, 10);
+        if (parsed >= kMinimumFov && parsed <= kMaximumFov) {
+            output.fov = static_cast<std::uint16_t>(parsed);
+        }
     }
 }
 
 /**
- * Writes the whole document. 
+ * Replaces the FOV document with one complete configuration.
  * @param settings Configuration to store.
- * @return True when every byte reached the file.
+ * @return True when the entire document reached disk.
  */
 [[nodiscard]] bool store(const Settings& settings) noexcept {
     if (!g_pathResolved) {
@@ -121,9 +122,9 @@ void parse(std::string_view text, Settings& output) noexcept {
     std::array<char, kFileCapacity> document{};
     const int size = std::snprintf(document.data(),
                                    document.size(),
-                                   "{\n  \"enabled\": %s,\n  \"fov\": %.3f\n}\n",
+                                   "{\n  \"enabled\": %s,\n  \"fov\": %u\n}\n",
                                    settings.enabled ? "true" : "false",
-                                   static_cast<double>(settings.fov));
+                                   static_cast<unsigned>(settings.fov));
     if (size <= 0) {
         return false;
     }
@@ -145,7 +146,7 @@ void parse(std::string_view text, Settings& output) noexcept {
     return complete;
 }
 
-/** Reads the config file into the active when it exists. */
+/** Loads one FOV config into the active configuration. */
 void load() noexcept {
     const HANDLE file = CreateFileW(g_path.chars.data(),
                                     GENERIC_READ,
@@ -177,7 +178,7 @@ void load() noexcept {
 
 } // namespace
 
-/** resolves/reads the config file and loads it when it exists. */
+/** Resolves the configuration path and loads a saved FOV config when present. */
 void initialize(void* module) noexcept {
     AcquireSRWLockExclusive(&g_lock);
     g_settings = Settings{};
@@ -191,7 +192,7 @@ void initialize(void* module) noexcept {
     ReleaseSRWLockExclusive(&g_lock);
 }
 
-/** Drops the runtime config. */
+/** Drops the active configuration and resolved file path. */
 void shutdown() noexcept {
     AcquireSRWLockExclusive(&g_lock);
     g_settings = Settings{};
@@ -200,7 +201,7 @@ void shutdown() noexcept {
     ReleaseSRWLockExclusive(&g_lock);
 }
 
-/** @return One lock-consistent copy of the current configuration. */
+/** @return One lock-consistent copy of the active FOV configuration. */
 Settings get() noexcept {
     AcquireSRWLockShared(&g_lock);
     const Settings snapshot = g_settings;
@@ -208,19 +209,21 @@ Settings get() noexcept {
     return snapshot;
 }
 
-/** Publishes one configuration and writes it  */
+/** Persists and publishes one valid FOV configuration as a single state change. */
 bool publish(const Settings& settings) noexcept {
     if (!valid(settings)) {
         return false;
     }
     AcquireSRWLockExclusive(&g_lock);
-    g_settings = settings;
     const bool stored = store(settings);
+    if (stored) {
+        g_settings = settings;
+    }
     ReleaseSRWLockExclusive(&g_lock);
     if (!stored) {
         report_fail("write");
     }
-    return true;
+    return stored;
 }
 
 } // namespace sunrise::client::fov
