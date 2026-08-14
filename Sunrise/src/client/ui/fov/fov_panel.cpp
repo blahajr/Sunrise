@@ -26,9 +26,9 @@ void draw() noexcept {
     bool applyNow = false;
     bool persistNow = false;
 
-    ImGui::TextUnformatted("Field of View");
-    ImGui::Spacing();
-    ImGui::TextWrapped("Sets the player field of view.");
+    ImGui::TextUnformatted("FOV");
+    ImGui::Separator();
+    ImGui::TextWrapped("Change your player field of view");
     ImGui::Spacing();
 
     if (core::ui::components::toggle::control("Enabled", settings.enabled)) {
