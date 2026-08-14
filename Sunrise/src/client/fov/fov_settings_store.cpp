@@ -1,10 +1,8 @@
 /**
- * The teleport configuration store. It is separate from Core settings because the interface
- * changes these values while the game runs and saves each change at once. Core settings are
- * parsed once into an immutable global.
+ * The FOV config store.
  */
 
-#include "teleport_settings_store.h"
+#include "fov_settings_store.h"
 
 #include <Windows.h>
 
@@ -17,34 +15,28 @@
 #include "../../core/filesystem/path.h"
 #include "../../core/logging/log.h"
 
-namespace sunrise::client::teleport {
+namespace sunrise::client::fov {
 namespace {
 
-/** The module-owned configuration file, beside the generated settings and logs. */
-constexpr std::wstring_view kFileSuffix = L"\\teleport.json";
-/** The document is 3 scalars, so one small buffer covers both reading and writing. */
+constexpr std::wstring_view kFileSuffix = L"\\fov.json";
 constexpr std::size_t kFileCapacity = 512;
-/** Longest scalar accepted from the file. Anything longer is malformed rather than large. */
 constexpr std::size_t kScalarCapacity = 32;
-/** Highest Windows virtual-key code, so a stored binding cannot name a key that cannot exist. */
-constexpr std::uint32_t kMaximumVirtualKey = 254;
 
 SRWLOCK g_lock{SRWLOCK_INIT};
 Settings g_settings{};
 core::path::Buffer g_path{};
 bool g_pathResolved{};
 
-/** @param settings Candidate configuration. @return True when every field is in range. */
+/** @param settings Configuration to check. @return True when every field is in range. */
 [[nodiscard]] bool valid(const Settings& settings) noexcept {
-    return settings.distance >= kMinimumDistance && settings.distance <= kMaximumDistance
-           && settings.virtualKey <= kMaximumVirtualKey;
+    return settings.fov >= kMinimumFov && settings.fov <= kMaximumFov;
 }
 
 /** @param reason Key naming the step that failed. */
 void report_fail(const char* reason) noexcept {
     std::array<char, 96> line{};
-    const int written = std::snprintf(
-        line.data(), line.size(), "ev=teleport stage=store result=fail reason=%s", reason);
+    const int written =
+        std::snprintf(line.data(), line.size(), "ev=fov stage=store result=fail reason=%s", reason);
     if (written > 0) {
         core::log::write(core::log::Channel::client,
                          core::log::Level::warn,
@@ -112,17 +104,13 @@ void parse(std::string_view text, Settings& output) noexcept {
         output.enabled = scalar.starts_with("true");
     }
     std::array<char, kScalarCapacity> buffer{};
-    if (scalar_for(text, "\"distance\"", scalar) && terminated(scalar, buffer)) {
-        output.distance = std::strtof(buffer.data(), nullptr);
-    }
-    if (scalar_for(text, "\"virtual_key\"", scalar) && terminated(scalar, buffer)) {
-        output.virtualKey = static_cast<std::uint32_t>(std::strtoul(buffer.data(), nullptr, 0));
+    if (scalar_for(text, "\"fov\"", scalar) && terminated(scalar, buffer)) {
+        output.fov = std::strtof(buffer.data(), nullptr);
     }
 }
 
 /**
- * Writes the whole document. It is small enough that a complete rewrite is the simplest
- * correct save, which the shared settings file is not.
+ * Writes the whole document. 
  * @param settings Configuration to store.
  * @return True when every byte reached the file.
  */
@@ -133,11 +121,9 @@ void parse(std::string_view text, Settings& output) noexcept {
     std::array<char, kFileCapacity> document{};
     const int size = std::snprintf(document.data(),
                                    document.size(),
-                                   "{\n  \"enabled\": %s,\n  \"distance\": %.3f,\n"
-                                   "  \"virtual_key\": %u\n}\n",
+                                   "{\n  \"enabled\": %s,\n  \"fov\": %.3f\n}\n",
                                    settings.enabled ? "true" : "false",
-                                   static_cast<double>(settings.distance),
-                                   static_cast<unsigned>(settings.virtualKey));
+                                   static_cast<double>(settings.fov));
     if (size <= 0) {
         return false;
     }
@@ -159,7 +145,7 @@ void parse(std::string_view text, Settings& output) noexcept {
     return complete;
 }
 
-/** Reads the configuration file into the active settings when one exists. */
+/** Reads the config file into the active when it exists. */
 void load() noexcept {
     const HANDLE file = CreateFileW(g_path.chars.data(),
                                     GENERIC_READ,
@@ -191,7 +177,7 @@ void load() noexcept {
 
 } // namespace
 
-/** Resolves the configuration file and loads it when one exists. */
+/** resolves/reads the config file and loads it when it exists. */
 void initialize(void* module) noexcept {
     AcquireSRWLockExclusive(&g_lock);
     g_settings = Settings{};
@@ -205,7 +191,7 @@ void initialize(void* module) noexcept {
     ReleaseSRWLockExclusive(&g_lock);
 }
 
-/** Drops the runtime configuration and the resolved file path. */
+/** Drops the runtime config. */
 void shutdown() noexcept {
     AcquireSRWLockExclusive(&g_lock);
     g_settings = Settings{};
@@ -222,7 +208,7 @@ Settings get() noexcept {
     return snapshot;
 }
 
-/** Publishes one configuration and writes it */
+/** Publishes one configuration and writes it  */
 bool publish(const Settings& settings) noexcept {
     if (!valid(settings)) {
         return false;
@@ -237,4 +223,4 @@ bool publish(const Settings& settings) noexcept {
     return true;
 }
 
-} // namespace sunrise::client::teleport
+} // namespace sunrise::client::fov

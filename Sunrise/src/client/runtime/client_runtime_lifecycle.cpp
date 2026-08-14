@@ -1,5 +1,6 @@
 #include "../../core/logging/log.h"
 #include "../content/investment/worker.h"
+#include "../fov/fov_settings_store.h"
 #include "../hooks/assert_handler/assert_handler_lifecycle.h"
 #include "../hooks/banner/banner_hook_lifecycle.h"
 #include "../hooks/bitmap/bitmap_hook_lifecycle.h"
@@ -25,6 +26,7 @@ namespace sunrise::client {
 bool initialize(void* module) noexcept {
     // Loaded before the pages register, so the teleport page draws saved values on its first frame.
     teleport::initialize(module);
+    fov::initialize(module);
     return ui::runtime::initialize();
 }
 
@@ -87,6 +89,7 @@ bool shutdown() noexcept {
     runtime::g_graphicsStage = runtime::StageState::pending;
     runtime::g_platformStage = runtime::StageState::pending;
     ui::runtime::shutdown();
+    fov::shutdown();
     teleport::shutdown();
     core::log::write(core::log::Channel::client, core::log::Level::info, "ev=shutdown result=ok");
     ReleaseSRWLockExclusive(&runtime::g_lock);
