@@ -10,6 +10,12 @@ inline constexpr float kDefaultDistance = 10.0F;
 inline constexpr float kMinimumDistance = 1.0F;
 /** Largest offered distance. Past this a press reliably lands through a wall or the floor. */
 inline constexpr float kMaximumDistance = 100.0F;
+/** Default velocity for it */
+inline constexpr float kDefaultForwardMomentum = 20.0F;
+/** Smallest offered forward impulse.. */
+inline constexpr float kMinimumForwardMomentum = 1.0F;
+/** Largest offered forward impulse.  */
+inline constexpr float kMaximumForwardMomentum = 100.0F;
 /** No key is bound until one is picked, so a fresh install cannot teleport by accident. */
 inline constexpr std::uint32_t kNoKey = 0;
 
@@ -17,6 +23,8 @@ inline constexpr std::uint32_t kNoKey = 0;
 struct Settings {
     bool enabled{false};
     float distance{kDefaultDistance};
+    bool addForwardMomentum{false};
+    float forwardMomentum{kDefaultForwardMomentum};
     std::uint32_t virtualKey{kNoKey};
 };
 

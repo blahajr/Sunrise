@@ -22,7 +22,7 @@ namespace {
 
 /** The module-owned configuration file, beside the generated settings and logs. */
 constexpr std::wstring_view kFileSuffix = L"\\teleport.json";
-/** The document is 3 scalars, so one small buffer covers both reading and writing. */
+/** The document is scalars, so one small buffer covers both reading and writing. */
 constexpr std::size_t kFileCapacity = 512;
 /** Longest scalar accepted from the file. Anything longer is malformed rather than large. */
 constexpr std::size_t kScalarCapacity = 32;
@@ -37,6 +37,8 @@ bool g_pathResolved{};
 /** @param settings Candidate configuration. @return True when every field is in range. */
 [[nodiscard]] bool valid(const Settings& settings) noexcept {
     return settings.distance >= kMinimumDistance && settings.distance <= kMaximumDistance
+           && settings.forwardMomentum >= kMinimumForwardMomentum
+           && settings.forwardMomentum <= kMaximumForwardMomentum
            && settings.virtualKey <= kMaximumVirtualKey;
 }
 
@@ -115,6 +117,12 @@ void parse(std::string_view text, Settings& output) noexcept {
     if (scalar_for(text, "\"distance\"", scalar) && terminated(scalar, buffer)) {
         output.distance = std::strtof(buffer.data(), nullptr);
     }
+    if (scalar_for(text, "\"add_forward_momentum\"", scalar)) {
+        output.addForwardMomentum = scalar.starts_with("true");
+    }
+    if (scalar_for(text, "\"forward_momentum\"", scalar) && terminated(scalar, buffer)) {
+        output.forwardMomentum = std::strtof(buffer.data(), nullptr);
+    }
     if (scalar_for(text, "\"virtual_key\"", scalar) && terminated(scalar, buffer)) {
         output.virtualKey = static_cast<std::uint32_t>(std::strtoul(buffer.data(), nullptr, 0));
     }
@@ -134,9 +142,13 @@ void parse(std::string_view text, Settings& output) noexcept {
     const int size = std::snprintf(document.data(),
                                    document.size(),
                                    "{\n  \"enabled\": %s,\n  \"distance\": %.3f,\n"
+                                   "  \"add_forward_momentum\": %s,\n"
+                                   "  \"forward_momentum\": %.3f,\n"
                                    "  \"virtual_key\": %u\n}\n",
                                    settings.enabled ? "true" : "false",
                                    static_cast<double>(settings.distance),
+                                   settings.addForwardMomentum ? "true" : "false",
+                                   static_cast<double>(settings.forwardMomentum),
                                    static_cast<unsigned>(settings.virtualKey));
     if (size <= 0) {
         return false;

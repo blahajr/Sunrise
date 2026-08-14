@@ -7,6 +7,7 @@
 
 #include <Windows.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <imgui.h>
@@ -90,15 +91,16 @@ void draw() noexcept {
     ImGui::TextUnformatted("Teleport");
     ImGui::Separator();
     ImGui::TextWrapped("Teleports you forward in the facing direction. "
-                       "Cancels vertical momentum.");
+                       "Cancels vertical momentum, with optional forward momentum.");
     ImGui::Spacing();
 
     changed = core::ui::components::toggle::control("Enabled", settings.enabled) || changed;
 
     ImGui::Spacing();
     // One label column and one control column, so the slider and the key button share both edges.
-    const float labelWidth =
-        ImGui::CalcTextSize("Distance").x + ImGui::GetStyle().ItemSpacing.x * 2;
+    const float labelWidth = (std::max)(ImGui::CalcTextSize("Distance").x,
+                                        ImGui::CalcTextSize("Boost").x)
+                             + ImGui::GetStyle().ItemSpacing.x * 2;
     const float controlWidth = ImGui::GetContentRegionAvail().x - labelWidth;
 
     ImGui::AlignTextToFramePadding();
@@ -113,6 +115,28 @@ void draw() noexcept {
                            "%.0f units")) {
         settings.distance = distance;
         changed = true;
+    }
+
+    ImGui::Spacing();
+    changed = core::ui::components::toggle::control(
+                  "Add forward momentum", settings.addForwardMomentum)
+              || changed;
+
+    if (settings.addForwardMomentum) {
+        ImGui::Spacing();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Boost");
+        ImGui::SameLine(labelWidth);
+        ImGui::SetNextItemWidth(controlWidth);
+        float forwardMomentum = settings.forwardMomentum;
+        if (ImGui::SliderFloat("##forward_momentum",
+                               &forwardMomentum,
+                               client::teleport::kMinimumForwardMomentum,
+                               client::teleport::kMaximumForwardMomentum,
+                               "%.0f velocity")) {
+            settings.forwardMomentum = forwardMomentum;
+            changed = true;
+        }
     }
 
     ImGui::Spacing();

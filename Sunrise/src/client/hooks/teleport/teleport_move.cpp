@@ -243,6 +243,22 @@ void set_vertical_velocity(std::byte* body, float value) noexcept {
 }
 
 /**
+ * Adds one camera-forward impulse to the stored velocity.
+ * @param body Rigid body to write.
+ * @param value Velocity to add along the camera's forward vector.
+ */
+void add_forward_velocity(std::byte* body, float value) noexcept {
+    std::array<float, kVectorLanes> velocity{};
+    if (!read_at(body + kBodyVelocityX, velocity)) {
+        return;
+    }
+    for (std::size_t lane = 0; lane < kVectorLanes; ++lane) {
+        velocity[lane] += g_forward[lane] * value;
+    }
+    (void)write_vector(body + kBodyVelocityX, velocity);
+}
+
+/**
  * Adds one world delta to a stored position.
  * @param address Vector to move.
  * @param delta World units per lane.
@@ -315,9 +331,13 @@ void set_vertical_velocity(std::byte* body, float value) noexcept {
         report_skip("no_body");
         return false;
     }
+    const client::teleport::Settings settings = client::teleport::get();
     report_gates(component, body);
     set_vertical_velocity(body, 0.0F);
-    if (!move_body(body, client::teleport::get().distance)) {
+    if (settings.addForwardMomentum) {
+        add_forward_velocity(body, settings.forwardMomentum);
+    }
+    if (!move_body(body, settings.distance)) {
         return false;
     }
     begin_press();
